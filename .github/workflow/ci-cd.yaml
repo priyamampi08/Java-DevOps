@@ -4,12 +4,12 @@ on:
   push:
     branches:
         - test
-permission:
+permissions:
    id-token: write
-   content: read
+   contents: read
 jobs:
   build-and-push:
-     ubuntu-latest
+     runs-on: ubuntu-latest
   steps:
       - name: checkout the code into runner
         uses: action/checkout@v4
