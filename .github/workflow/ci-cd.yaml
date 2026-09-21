@@ -1,0 +1,59 @@
+name: ci-cd workflow
+
+on:
+  push:
+    branches:
+        - test
+permission:
+   id-token: write
+   content: read
+jobs:
+  build-and-push:
+     ubuntu-latest
+  steps:
+      - name: checkout the code into runner
+        uses: action/checkout@v4
+      - name: install java in the runner to build the image
+        uses: actions/setup-java@v6
+        with:
+         with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven            
+        # 3. Run Maven tests
+      - name: Run Maven tests
+        run: mvn test
+
+      # 4. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t java-devops-image .
+
+      # 5. Authenticate GitHub Actions with AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::354147111180:role/github-actions-ecr-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 6. Login Docker to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 7. Tag Docker image with ECR repository URI
+      - name: Tag Docker image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag java-devops-image:latest \
+            $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      # 8. Push Docker image to ECR
+      - name: Push Docker image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker push \
+            $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}   
+         
