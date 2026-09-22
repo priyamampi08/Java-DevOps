@@ -32,20 +32,23 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t java-devops-image .
+      # 5. Debug OIDC claims
+      - name: Debug OIDC claims
+        uses: github/actions-oidc-debugger@main
 
-      # 5. Authenticate GitHub Actions with AWS
+      # 6. Authenticate GitHub Actions with AWS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::354147111180:role/github-actions-ecr-role
           aws-region: ${{ env.AWS_REGION }}
 
-      # 6. Login Docker to Amazon ECR
+      # 7. Login Docker to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 7. Tag Docker image with ECR repository URI
+      # 8: Tag Docker image with ECR repository URI
       - name: Tag Docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -53,7 +56,7 @@ jobs:
           docker tag java-devops-image:latest \
             $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
-      # 8. Push Docker image to ECR
+      # 9. Push Docker image to ECR
       - name: Push Docker image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
