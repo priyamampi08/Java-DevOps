@@ -32,6 +32,11 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t java-devops-image .
+      - name: Check GitHub repository
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF"
+
       
       # 6. Authenticate GitHub Actions with AWS
       - name: Configure AWS credentials
