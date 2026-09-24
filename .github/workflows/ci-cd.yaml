@@ -4,6 +4,13 @@ on:
   push:
     branches:
         - test
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/**'
+  workflow_dispatch:
 permissions:
    id-token: write
    contents: read
