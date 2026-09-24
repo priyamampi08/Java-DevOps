@@ -1,59 +1,58 @@
-name: ci-cd workflow
+name: CI-CD
 
 on:
   push:
     branches:
-        - test
-    paths:
-      - 'src/**'
-      - 'pom.xml'
-      - 'Dockerfile'
-      - '.dockerignore'
-      - '.github/**'
-  workflow_dispatch:
-permissions:
-   id-token: write
-   contents: read
-env: 
+      - test
 
- AWS_REGION: ap-south-1
- ECR_REPOSITORY: java-devops
- IMAGE_TAG: latest
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: java-devops
+  IMAGE_TAG: latest
+
 jobs:
+
+  # =========================
+  # APPLICATION CI
+  # =========================
   build-and-push:
-     runs-on: ubuntu-latest
-     steps:
-      - name: checkout the code into runner
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
         uses: actions/checkout@v4
-      - name: install java in the runner to build the image
+
+      - name: Setup Java
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven            
-        # 3. Run Maven tests
+          cache: maven
+
       - name: Run Maven tests
         run: mvn test
 
-      # 4. Build Docker image
       - name: Build Docker image
-        run: |
-          docker build -t java-devops-image .
-      
-      
-      # 6. Authenticate GitHub Actions with AWS
+        run: docker build -t java-devops-image .
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 7. Login Docker to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 8: Tag Docker image with ECR repository URI
       - name: Tag Docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -61,11 +60,44 @@ jobs:
           docker tag java-devops-image:latest \
             $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
-      # 9. Push Docker image to ECR
       - name: Push Docker image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push \
-            $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}   
-         
+            $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+
+  # =========================
+  # TERRAFORM / EKS
+  # =========================
+  terraform:
+
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
