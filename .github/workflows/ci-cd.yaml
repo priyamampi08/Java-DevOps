@@ -1,16 +1,21 @@
+```yaml
 name: CI-CD
 
+# When should this workflow run?
 on:
   push:
     branches:
       - test
 
+  # Also allows you to start the workflow manually
   workflow_dispatch:
 
+# Permissions given to GitHub Actions
 permissions:
   id-token: write
   contents: read
 
+# Common values used throughout the workflow
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: java-devops
@@ -23,13 +28,20 @@ jobs:
   # =========================
   build-and-push:
 
+    # GitHub gives us a temporary Ubuntu machine
     runs-on: ubuntu-latest
 
     steps:
 
+      # ==================================
+      # STEP 1: Get the code from GitHub
+      # ==================================
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ==================================
+      # STEP 2: Install Java 17
+      # ==================================
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
@@ -37,22 +49,51 @@ jobs:
           java-version: '17'
           cache: maven
 
+      # ==================================
+      # STEP 3: Test the Java application
+      # ==================================
       - name: Run Maven tests
         run: mvn test
 
+     
+
+      # ==================================
+      # STEP 5: Build Docker image
+      # ==================================
       - name: Build Docker image
         run: docker build -t java-devops-image .
 
+      # ==================================
+      # STEP 6: Scan Docker image
+      # ==================================
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: java-devops-image:latest
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      # ==================================
+      # STEP 7: Connect GitHub Actions to AWS
+      # ==================================
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # ==================================
+      # STEP 8: Login to ECR
+      # ==================================
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ==================================
+      # STEP 9: Give Docker image its ECR name
+      # ==================================
       - name: Tag Docker image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -60,12 +101,13 @@ jobs:
           docker tag java-devops-image:latest \
             $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
+      # ==================================
+      # STEP 10: Push Docker image to ECR
+      # ==================================
       - name: Push Docker image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker push \
             $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-
-
-  
+```
