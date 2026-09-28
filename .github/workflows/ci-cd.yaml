@@ -58,13 +58,13 @@ jobs:
      
 
       # ==================================
-      # STEP 5: Build Docker image
+      # STEP 4: Build Docker image
       # ==================================
       - name: Build Docker image
         run: docker build -t java-devops-image .
 
       # ==================================
-      # STEP 6: Scan Docker image
+      # STEP 5: Scan Docker image
       # ==================================
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
@@ -76,7 +76,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       # ==================================
-      # STEP 7: Connect GitHub Actions to AWS
+      # STEP 6: Connect GitHub Actions to AWS
       # ==================================
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -85,14 +85,14 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       # ==================================
-      # STEP 8: Login to ECR
+      # STEP 7: Login to ECR
       # ==================================
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       # ==================================
-      # STEP 9: Give Docker image its ECR name
+      # STEP 8: Give Docker image its ECR name
       # ==================================
       - name: Tag Docker image
         env:
@@ -102,7 +102,7 @@ jobs:
             $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       # ==================================
-      # STEP 10: Push Docker image to ECR
+      # STEP 9: Push Docker image to ECR
       # ==================================
       - name: Push Docker image to ECR
         env:
